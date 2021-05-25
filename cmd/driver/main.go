@@ -244,7 +244,7 @@ func getServerID(hcloudClient *hcloud.Client) int {
 }
 
 func getInstanceID() (int, error) {
-	resp, err := http.Get("http://169.254.169.254/2009-04-04/meta-data/instance-id")
+	resp, err := http.Get("http://169.254.169.254/hetzner/v1/metadata/instance-id")
 	if err != nil {
 		return 0, err
 	}
