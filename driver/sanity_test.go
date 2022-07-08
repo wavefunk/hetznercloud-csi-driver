@@ -3,6 +3,7 @@ package driver
 import (
 	"container/list"
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -12,7 +13,7 @@ import (
 
 	proto "github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/go-kit/kit/log"
-	"github.com/kubernetes-csi/csi-test/v3/pkg/sanity"
+	"github.com/kubernetes-csi/csi-test/v4/pkg/sanity"
 	"google.golang.org/grpc"
 
 	"github.com/hetznercloud/csi-driver/csi"
@@ -76,7 +77,9 @@ func TestSanity(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	testConfig := sanity.NewTestConfig()
-	testConfig.TargetPath = tempDir + "/hcloud-csi-sanity-target"
+	testConfig.CreateTargetDir = func(path string) (string, error) {
+		return tempDir + "/hcloud-csi-sanity-target", nil
+	}
 	testConfig.Address = endpoint
 	sanity.Test(t, testConfig)
 }
@@ -84,6 +87,19 @@ func TestSanity(t *testing.T) {
 type sanityVolumeService struct {
 	mu      sync.Mutex
 	volumes list.List
+}
+
+func (s *sanityVolumeService) All(ctx context.Context) ([]*csi.Volume, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	vols := []*csi.Volume{}
+	for e := s.volumes.Front(); e != nil; e = e.Next() {
+		v := e.Value.(*csi.Volume)
+		vols = append(vols, v)
+
+	}
+	return vols, nil
 }
 
 func (s *sanityVolumeService) Create(ctx context.Context, opts volumes.CreateOpts) (*csi.Volume, error) {
@@ -192,9 +208,20 @@ func (s *sanityMountService) PathExists(path string) (bool, error) {
 	return true, nil
 }
 
+func (s *sanityMountService) FormatDisk(disk string, fstype string) error {
+	return nil
+}
+
+func (s *sanityMountService) DetectDiskFormat(disk string) (string, error) {
+	return "ext4", nil
+}
+
 type sanityResizeService struct{}
 
 func (s *sanityResizeService) Resize(volumePath string) error {
+	if volumePath == "some/path" {
+		return errors.New("path not found")
+	}
 	return nil
 }
 

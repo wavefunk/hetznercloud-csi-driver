@@ -39,6 +39,8 @@ func NewNodeService(
 	}
 }
 
+const encryptionPassphraseKey = "encryption-passphrase"
+
 func (s *NodeService) NodeStageVolume(ctx context.Context, req *proto.NodeStageVolumeRequest) (*proto.NodeStageVolumeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "not supported")
 }
@@ -60,13 +62,17 @@ func (s *NodeService) NodePublishVolume(ctx context.Context, req *proto.NodePubl
 	var opts volumes.MountOpts
 	switch {
 	case req.VolumeCapability.GetBlock() != nil:
-		opts = volumes.MountOpts{BlockVolume: true}
+		opts = volumes.MountOpts{
+			BlockVolume:          true,
+			EncryptionPassphrase: req.Secrets[encryptionPassphraseKey],
+		}
 	case req.VolumeCapability.GetMount() != nil:
 		mount := req.VolumeCapability.GetMount()
 		opts = volumes.MountOpts{
-			FSType:     mount.FsType,
-			Readonly:   req.Readonly,
-			Additional: mount.MountFlags,
+			FSType:               mount.FsType,
+			Readonly:             req.Readonly,
+			Additional:           mount.MountFlags,
+			EncryptionPassphrase: req.Secrets[encryptionPassphraseKey],
 		}
 	default:
 		return nil, status.Error(codes.InvalidArgument, "publish volume: unsupported volume capability")
@@ -174,8 +180,19 @@ func (s *NodeService) NodeGetInfo(context.Context, *proto.NodeGetInfoRequest) (*
 }
 
 func (s *NodeService) NodeExpandVolume(ctx context.Context, req *proto.NodeExpandVolumeRequest) (*proto.NodeExpandVolumeResponse, error) {
+	if req.VolumeId == "" {
+		return nil, status.Error(codes.InvalidArgument, "missing volume id")
+	}
 	if req.VolumePath == "" {
 		return nil, status.Error(codes.InvalidArgument, "missing volume path")
+	}
+	volumeExists, err := s.volumeMountService.PathExists(req.VolumePath)
+	if err != nil {
+		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to check for volume existence: %s", err))
+	}
+
+	if !volumeExists {
+		return nil, status.Error(codes.NotFound, fmt.Sprintf("volume %s is not available on this node", req.VolumePath))
 	}
 
 	if req.VolumeCapability.GetBlock() == nil {

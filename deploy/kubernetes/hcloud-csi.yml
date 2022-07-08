@@ -394,3 +394,4 @@ spec:
   podInfoOnMount: true
   volumeLifecycleModes:
   - Persistent
+  fsGroupPolicy: File

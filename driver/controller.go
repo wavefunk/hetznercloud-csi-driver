@@ -48,14 +48,9 @@ func (s *ControllerService) CreateVolume(ctx context.Context, req *proto.CreateV
 	}
 
 	// Check if ALL volume capabilities are supported.
-	var fsType *string
 	for i, cap := range req.VolumeCapabilities {
 		if !isCapabilitySupported(cap) {
 			return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("capability at index %d is not supported", i))
-		}
-		// If this volume is destined to have a filesystem on it, we can pass that information along to hcloud API.
-		if mount := cap.GetMount(); mount != nil {
-			fsType = &mount.FsType
 		}
 	}
 
@@ -73,7 +68,6 @@ func (s *ControllerService) CreateVolume(ctx context.Context, req *proto.CreateV
 		MinSize:  minSize,
 		MaxSize:  maxSize,
 		Location: location,
-		Format:   fsType,
 	})
 	if err != nil {
 		level.Error(s.logger).Log(
@@ -273,8 +267,35 @@ func (s *ControllerService) ValidateVolumeCapabilities(ctx context.Context, req 
 	return resp, nil
 }
 
-func (s *ControllerService) ListVolumes(context.Context, *proto.ListVolumesRequest) (*proto.ListVolumesResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "listing volumes is not supported")
+func (s *ControllerService) ListVolumes(ctx context.Context, req *proto.ListVolumesRequest) (*proto.ListVolumesResponse, error) {
+	if req.StartingToken != "" {
+		return nil, status.Error(codes.Aborted, "Starting token is not implemented")
+	}
+
+	vols, err := s.volumeService.All(ctx)
+
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	resp := &proto.ListVolumesResponse{Entries: make([]*proto.ListVolumesResponse_Entry, len(vols))}
+	for i, volume := range vols {
+		resp.Entries[i] = &proto.ListVolumesResponse_Entry{
+			Volume: &proto.Volume{
+				VolumeId:      strconv.FormatUint(volume.ID, 10),
+				CapacityBytes: volume.SizeBytes(),
+				AccessibleTopology: []*proto.Topology{
+					{
+						Segments: map[string]string{
+							TopologySegmentLocation: volume.Location,
+						},
+					},
+				},
+			},
+		}
+	}
+
+	return resp, nil
 }
 
 func (s *ControllerService) GetCapacity(context.Context, *proto.GetCapacityRequest) (*proto.GetCapacityResponse, error) {
@@ -302,6 +323,13 @@ func (s *ControllerService) ControllerGetCapabilities(context.Context, *proto.Co
 				Type: &proto.ControllerServiceCapability_Rpc{
 					Rpc: &proto.ControllerServiceCapability_RPC{
 						Type: proto.ControllerServiceCapability_RPC_EXPAND_VOLUME,
+					},
+				},
+			},
+			{
+				Type: &proto.ControllerServiceCapability_Rpc{
+					Rpc: &proto.ControllerServiceCapability_RPC{
+						Type: proto.ControllerServiceCapability_RPC_LIST_VOLUMES,
 					},
 				},
 			},

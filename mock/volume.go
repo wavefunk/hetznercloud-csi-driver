@@ -12,12 +12,20 @@ import (
 type VolumeService struct {
 	CreateFunc        func(ctx context.Context, opts volumes.CreateOpts) (*csi.Volume, error)
 	GetServerByIDFunc func(ctx context.Context, id int) (*hcloud.Server, error)
+	AllFunc           func(ctx context.Context) ([]*csi.Volume, error)
 	GetByIDFunc       func(ctx context.Context, id uint64) (*csi.Volume, error)
 	GetByNameFunc     func(ctx context.Context, name string) (*csi.Volume, error)
 	DeleteFunc        func(ctx context.Context, volume *csi.Volume) error
 	AttachFunc        func(ctx context.Context, volume *csi.Volume, server *csi.Server) error
 	DetachFunc        func(ctx context.Context, volume *csi.Volume, server *csi.Server) error
 	ResizeFunc        func(ctx context.Context, volume *csi.Volume, size int) error
+}
+
+func (s *VolumeService) All(ctx context.Context) ([]*csi.Volume, error) {
+	if s.AllFunc == nil {
+		panic("not implemented")
+	}
+	return s.AllFunc(ctx)
 }
 
 func (s *VolumeService) Create(ctx context.Context, opts volumes.CreateOpts) (*csi.Volume, error) {
@@ -70,9 +78,11 @@ func (s *VolumeService) Resize(ctx context.Context, volume *csi.Volume, size int
 }
 
 type VolumeMountService struct {
-	PublishFunc    func(targetPath string, devicePath string, opts volumes.MountOpts) error
-	UnpublishFunc  func(targetPath string) error
-	PathExistsFunc func(path string) (bool, error)
+	PublishFunc          func(targetPath string, devicePath string, opts volumes.MountOpts) error
+	UnpublishFunc        func(targetPath string) error
+	PathExistsFunc       func(path string) (bool, error)
+	FormatDiskFunc       func(disk string, fstype string) error
+	DetectDiskFormatFunc func(disk string) (string, error)
 }
 
 func (s *VolumeMountService) Publish(targetPath string, devicePath string, opts volumes.MountOpts) error {
@@ -94,6 +104,20 @@ func (s *VolumeMountService) Unpublish(targetPath string) error {
 		panic("not implemented")
 	}
 	return s.UnpublishFunc(targetPath)
+}
+
+func (s *VolumeMountService) FormatDisk(disk string, fstype string) error {
+	if s.FormatDiskFunc == nil {
+		panic("not implemented")
+	}
+	return s.FormatDiskFunc(disk, fstype)
+}
+
+func (s *VolumeMountService) DetectDiskFormat(disk string) (string, error) {
+	if s.DetectDiskFormatFunc == nil {
+		panic("not implemented")
+	}
+	return s.DetectDiskFormatFunc(disk)
 }
 
 type VolumeResizeService struct {

@@ -328,7 +328,7 @@ func TestNodeServiceNodeExpandVolume(t *testing.T) {
 	env := newNodeServerTestEnv()
 
 	env.volumeMountService.PathExistsFunc = func(path string) (bool, error) {
-		if path != "LinuxDevicePath" {
+		if path != "volumePath" {
 			t.Errorf("unexpected volume path passed to volume mount service: %s", path)
 		}
 		return true, nil
@@ -353,7 +353,7 @@ func TestNodeServiceNodeExpandBlockVolume(t *testing.T) {
 	env := newNodeServerTestEnv()
 
 	env.volumeMountService.PathExistsFunc = func(path string) (bool, error) {
-		if path != "LinuxDevicePath" {
+		if path != "volumePath" {
 			t.Errorf("unexpected volume path passed to volume mount service: %s", path)
 		}
 		return true, nil

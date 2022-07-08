@@ -29,7 +29,6 @@ func (s *IdempotentService) Create(ctx context.Context, opts CreateOpts) (*csi.V
 		"min-size", opts.MinSize,
 		"max-size", opts.MaxSize,
 		"location", opts.Location,
-		"format", opts.Format,
 	)
 
 	volume, err := s.volumeService.Create(ctx, opts)
@@ -94,6 +93,10 @@ func (s *IdempotentService) Create(ctx context.Context, opts CreateOpts) (*csi.V
 	}
 
 	return nil, err
+}
+
+func (s *IdempotentService) All(ctx context.Context) ([]*csi.Volume, error) {
+	return s.volumeService.All(ctx)
 }
 
 func (s *IdempotentService) GetByID(ctx context.Context, id uint64) (*csi.Volume, error) {

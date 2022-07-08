@@ -1,6 +1,6 @@
 ---
 include:
-  - project: "hc/ops/ci"
+  - project: "cloud/operations/ci"
     file: "k8s/release.yml"
 
 stages:
@@ -17,9 +17,10 @@ unit:
   image: golang:1.17
   stage: test
   script:
-    - go test $(go list ./... | grep -v e2etests) -v
+    - go test $(go list ./... | grep -v e2etests | grep -v integrationtests) -v
   tags:
     - hc-bladerunner
+
 
 .k8se2e: &k8se2e
   image: docker:git
@@ -33,22 +34,17 @@ unit:
   tags:
     - hc-bladerunner-build
 
-k8s 1.19:
-  <<: *k8se2e
-  variables:
-    K8S_VERSION: k8s-1.19.10
-
-k8s 1.20:
-  <<: *k8se2e
-  variables:
-    K8S_VERSION: k8s-1.20.6
-
-k8s 1.21:
-  <<: *k8se2e
-  variables:
-    K8S_VERSION: k8s-1.21.0
-
 k8s 1.22:
   <<: *k8se2e
   variables:
     K8S_VERSION: k8s-1.22.0
+
+k8s 1.23:
+  <<: *k8se2e
+  variables:
+    K8S_VERSION: k8s-1.23.8
+
+k8s 1.24:
+  <<: *k8se2e
+  variables:
+    K8S_VERSION: k8s-1.24.2
